@@ -27,9 +27,9 @@ public class FactoryServiceImp implements FactoryService {
         var factory = repository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException("L'usine avec l'id " + factoryId + " n'existe pas"));
 
-        factory.setName(request.getName());
-        factory.setProduction(request.getProduction());
-        factory.setAddress(request.getAddress());
+        factory.rename(request.getName());
+        factory.changeProduction(request.getProduction());
+        factory.describeAs(request.getAddress());
         applyGeocoding(factory);
 
         return repository.save(factory);
@@ -39,10 +39,10 @@ public class FactoryServiceImp implements FactoryService {
         var factory = repository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException("L'usine avec l'id " + factoryId + " n'existe pas"));
 
-        if (request.getName() != null) factory.setName(request.getName());
-        if (request.getProduction() != null) factory.setProduction(request.getProduction());
+        if (request.getName() != null) factory.rename(request.getName());
+        if (request.getProduction() != null) factory.changeProduction(request.getProduction());
         if (request.getAddress() != null) {
-            factory.setAddress(request.getAddress());
+            factory.describeAs(request.getAddress());
             applyGeocoding(factory);
         }
 
@@ -69,14 +69,13 @@ public class FactoryServiceImp implements FactoryService {
     public Factory produceFactory(Long factoryId, int quantity) {
         var factory = repository.findById(factoryId)
                 .orElseThrow(() -> new NotFoundException("L'usine avec l'id " + factoryId + " n'existe pas"));
-        factory.setStock(factory.getStock() + quantity);
+        factory.produce(quantity);
         return repository.save(factory);
     }
 
     private void applyGeocoding(Factory factory) {
         if (factory.getAddress() == null) return;
         GeocodingResult result = geocodingClient.geocode(factory.getAddress());
-        factory.setLatitude(result.latitude());
-        factory.setLongitude(result.longitude());
+        factory.locateAt(result.latitude(), result.longitude());
     }
 }

@@ -7,27 +7,24 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
-@Getter @Setter
-@Builder
-@AllArgsConstructor @NoArgsConstructor
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Store {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "store_id")
     private Long id;
 
-    @Column()
+    @Column(nullable = false)
     private String name;
 
-    @Builder.Default
-    @Column()
+    @Column(nullable = false)
     private Integer stock = 0;
 
     @Version
@@ -36,13 +33,43 @@ public class Store {
     @Transient
     private String address;
 
-    @Column()
+    @Column
     private Double latitude;
 
-    @Column()
+    @Column
     private Double longitude;
 
-    public void addStock(int quantity) {
-        this.stock += quantity;
+    public Store(String name) {
+        if (name != null) this.name = requireName(name);
+        this.stock = 0;
+    }
+
+    public void receive(int quantity) {
+        this.stock += requirePositive(quantity, "La quantité reçue doit être positive");
+    }
+
+    public void rename(String name) {
+        this.name = requireName(name);
+    }
+
+    public void locateAt(double latitude, double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
+
+    public void describeAs(String address) {
+        this.address = address;
+    }
+
+    private static String requireName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Le nom du magasin est obligatoire");
+        }
+        return name;
+    }
+
+    private static int requirePositive(int value, String message) {
+        if (value <= 0) throw new IllegalArgumentException(message);
+        return value;
     }
 }

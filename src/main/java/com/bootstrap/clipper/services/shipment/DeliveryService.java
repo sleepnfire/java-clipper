@@ -24,9 +24,7 @@ public class DeliveryService {
                 .findByStatusAndEstimatedArrivalAtBefore(ShipmentStatus.IN_TRANSIT, LocalDateTime.now());
 
         for (var shipment : arrivedShipments) {
-            shipment.setStatus(ShipmentStatus.DELIVERED);
-            shipment.setDeliveredAt(LocalDateTime.now());
-            shipment.getStore().addStock(shipment.getQuantity());
+            shipment.markDelivered(LocalDateTime.now());
 
             log.info("Livraison #{} terminee : usine '{}' vers magasin '{}', +{} trombones (stock: {})",
                     shipment.getId(),

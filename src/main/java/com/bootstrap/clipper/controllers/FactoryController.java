@@ -35,7 +35,7 @@ public class FactoryController {
     @PostMapping
     public ResponseEntity<FactoryResponse> saveFactory(@Valid @RequestBody FactoryRequest request) {
         Factory saved = service.saveFactory(mapper.toEntity(request));
-        saved.setAddress(request.address()); // transient : on connaît déjà l'adresse
+        saved.describeAs(request.address()); // transient : on connaît déjà l'adresse
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(saved));
     }
 
@@ -57,7 +57,7 @@ public class FactoryController {
     public ResponseEntity<FactoryResponse> updateFactory(@PathVariable Long id,
                                                          @Valid @RequestBody FactoryRequest request) {
         Factory updated = service.updateFactory(id, mapper.toEntity(request));
-        updated.setAddress(request.address());
+        updated.describeAs(request.address());
         return ResponseEntity.ok(mapper.toResponse(updated));
     }
 
@@ -85,7 +85,7 @@ public class FactoryController {
 
     private void resolveAddress(Factory factory) {
         if (factory.getLatitude() != null && factory.getLongitude() != null) {
-            factory.setAddress(geocodingClient.reverseGeocode(factory.getLatitude(), factory.getLongitude())
+            factory.describeAs(geocodingClient.reverseGeocode(factory.getLatitude(), factory.getLongitude())
                     .address());
         }
     }

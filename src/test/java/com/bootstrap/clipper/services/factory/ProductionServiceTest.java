@@ -25,10 +25,9 @@ class ProductionServiceTest {
     @InjectMocks
     private ProductionService productionService;
 
-
     @Test
     void produce_shouldAddProductionToStock() {
-        Factory factory = Factory.builder().name("Paris").production(10).build();
+        Factory factory = new Factory("Paris", 10);
 
         factory.produce();
 
@@ -37,7 +36,7 @@ class ProductionServiceTest {
 
     @Test
     void produce_calledThreeTimes_shouldAccumulateStock() {
-        Factory factory = Factory.builder().name("Lyon").production(5).build();
+        Factory factory = new Factory("Lyon", 5);
 
         factory.produce();
         factory.produce();
@@ -48,7 +47,8 @@ class ProductionServiceTest {
 
     @Test
     void produce_withExistingStock_shouldAddOnTop() {
-        Factory factory = Factory.builder().name("Marseille").production(7).stock(20).build();
+        Factory factory = new Factory("Marseille", 7);
+        factory.produce(20);
 
         factory.produce();
 
@@ -59,8 +59,8 @@ class ProductionServiceTest {
 
     @Test
     void produceClips_shouldCallProduceOnEachFactory() {
-        Factory paris = Factory.builder().name("Paris").production(10).build();
-        Factory lyon = Factory.builder().name("Lyon").production(5).build();
+        Factory paris = new Factory("Paris", 10);
+        Factory lyon = new Factory("Lyon", 5);
         when(repository.findAll()).thenReturn(List.of(paris, lyon));
 
         productionService.produceClips();
@@ -72,7 +72,7 @@ class ProductionServiceTest {
 
     @Test
     void produceClips_calledTwice_shouldDoubleProduction() {
-        Factory factory = Factory.builder().name("Paris").production(8).build();
+        Factory factory = new Factory("Paris", 8);
         when(repository.findAll()).thenReturn(List.of(factory));
 
         productionService.produceClips();

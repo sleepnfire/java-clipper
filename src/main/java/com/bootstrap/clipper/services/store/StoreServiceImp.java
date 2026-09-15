@@ -43,23 +43,21 @@ public class StoreServiceImp implements StoreService {
     }
 
     public Store updateStore(Long storeId, Store request) {
-        var store = repository.findById(storeId)
-                .orElseThrow(() -> new NotFoundException("Le magasin avec l'id " + storeId + " n'existe pas"));
+        var store = getStoreOrThrow(storeId);
 
-        store.setName(request.getName());
-        store.setAddress(request.getAddress());
+        store.rename(request.getName());
+        store.describeAs(request.getAddress());
         applyGeocoding(store);
 
         return repository.save(store);
     }
 
     public Store patchStore(Long storeId, Store request) {
-        var store = repository.findById(storeId)
-                .orElseThrow(() -> new NotFoundException("Le magasin avec l'id " + storeId + " n'existe pas"));
+        var store = getStoreOrThrow(storeId);
 
-        if (request.getName() != null) store.setName(request.getName());
+        if (request.getName() != null) store.rename(request.getName());
         if (request.getAddress() != null) {
-            store.setAddress(request.getAddress());
+            store.describeAs(request.getAddress());
             applyGeocoding(store);
         }
 
@@ -67,8 +65,7 @@ public class StoreServiceImp implements StoreService {
     }
 
     public Store getStore(Long storeId) {
-        return repository.findById(storeId)
-                .orElseThrow(() -> new NotFoundException("Le magasin avec l'id " + storeId + " n'existe pas"));
+        return getStoreOrThrow(storeId);
     }
 
     public List<Store> getAllStores() {
@@ -83,8 +80,7 @@ public class StoreServiceImp implements StoreService {
     }
 
     public List<FactoryAvailabilityResponse> getAvailableFactories(Long storeId) {
-        Store store = repository.findById(storeId)
-                .orElseThrow(() -> new NotFoundException("Le magasin avec l'id " + storeId + " n'existe pas"));
+        Store store = getStoreOrThrow(storeId);
 
         return factoryRepository.findAll().stream()
                 .map(factory -> {
@@ -107,16 +103,10 @@ public class StoreServiceImp implements StoreService {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 return transactionTemplate.execute(status -> {
-                    Store store = repository.findById(storeId)
-                            .orElseThrow(() -> new NotFoundException("Le magasin avec l'id " + storeId + " n'existe pas"));
+                    Store store = getStoreOrThrow(storeId);
 
                     Factory factory = factoryRepository.findById(factoryId)
                             .orElseThrow(() -> new NotFoundException("L'usine avec l'id " + factoryId + " n'existe pas"));
-
-                    if (factory.getStock() < quantity) {
-                        throw new ConflictException("Stock insuffisant : l'usine '" + factory.getName()
-                                + "' a " + factory.getStock() + " trombones, " + quantity + " demandés");
-                    }
 
                     // Distance réelle via Haversine
                     double distanceKm = geoService.calculateDistance(
@@ -125,20 +115,19 @@ public class StoreServiceImp implements StoreService {
                     );
                     double deliverySeconds = (distanceKm / SPEED_KMH) * 3600;
 
-                    factory.setStock(factory.getStock() - quantity);
+                    factory.ship(quantity);
 
                     LocalDateTime now = LocalDateTime.now();
                     LocalDateTime arrival = now.plusSeconds((long) deliverySeconds);
 
-                    Shipment shipment = Shipment.builder()
-                            .factory(factory)
-                            .store(store)
-                            .quantity(quantity)
-                            .distanceKm(Math.round(distanceKm * 100.0) / 100.0)
-                            .status(ShipmentStatus.IN_TRANSIT)
-                            .departedAt(now)
-                            .estimatedArrivalAt(arrival)
-                            .build();
+                    Shipment shipment = new Shipment(
+                            factory,
+                            store,
+                            quantity,
+                            Math.round(distanceKm * 100.0) / 100.0,
+                            now,
+                            arrival
+                    );
 
                     log.info("Expedition de {} trombones : usine '{}' vers magasin '{}', {} km, arrivee dans {}s",
                             quantity, factory.getName(), store.getName(),
@@ -168,10 +157,14 @@ public class StoreServiceImp implements StoreService {
         return shipmentRepository.findByStoreIdAndStatus(storeId, shipmentStatus);
     }
 
+    private Store getStoreOrThrow(Long storeId) {
+        return repository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException("Le magasin avec l'id " + storeId + " n'existe pas"));
+    }
+
     private void applyGeocoding(Store store) {
         if (store.getAddress() == null) return;
         GeocodingResult result = geocodingClient.geocode(store.getAddress());
-        store.setLatitude(result.latitude());
-        store.setLongitude(result.longitude());
+        store.locateAt(result.latitude(), result.longitude());
     }
 }

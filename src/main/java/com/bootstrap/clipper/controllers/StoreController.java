@@ -41,7 +41,7 @@ public class StoreController {
     @PostMapping
     public ResponseEntity<StoreResponse> saveStore(@Valid @RequestBody StoreRequest request) {
         Store saved = service.saveStore(mapper.toEntity(request));
-        saved.setAddress(request.address());
+        saved.describeAs(request.address());
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(saved));
     }
 
@@ -63,7 +63,7 @@ public class StoreController {
     public ResponseEntity<StoreResponse> updateStore(@PathVariable Long id,
                                                      @Valid @RequestBody StoreRequest request) {
         Store updated = service.updateStore(id, mapper.toEntity(request));
-        updated.setAddress(request.address());
+        updated.describeAs(request.address());
         return ResponseEntity.ok(mapper.toResponse(updated));
     }
 
@@ -105,7 +105,7 @@ public class StoreController {
 
     private void resolveAddress(Store store) {
         if (store.getLatitude() != null && store.getLongitude() != null) {
-            store.setAddress(geocodingClient.reverseGeocode(store.getLatitude(), store.getLongitude())
+            store.describeAs(geocodingClient.reverseGeocode(store.getLatitude(), store.getLongitude())
                     .address());
         }
     }
@@ -113,12 +113,12 @@ public class StoreController {
     private void resolveShipmentAddresses(Shipment shipment) {
         var factory = shipment.getFactory();
         if (factory.getLatitude() != null && factory.getLongitude() != null) {
-            factory.setAddress(geocodingClient.reverseGeocode(factory.getLatitude(), factory.getLongitude())
+            factory.describeAs(geocodingClient.reverseGeocode(factory.getLatitude(), factory.getLongitude())
                     .address());
         }
         var store = shipment.getStore();
         if (store.getLatitude() != null && store.getLongitude() != null) {
-            store.setAddress(geocodingClient.reverseGeocode(store.getLatitude(), store.getLongitude())
+            store.describeAs(geocodingClient.reverseGeocode(store.getLatitude(), store.getLongitude())
                     .address());
         }
     }

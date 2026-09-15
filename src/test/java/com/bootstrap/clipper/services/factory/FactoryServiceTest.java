@@ -39,17 +39,13 @@ class FactoryServiceTest {
 
     @Test
     void saveFactory_withAddress_shouldGeocodeAndSave() {
-        Factory factory = Factory.builder()
-                .name("Usine Paris")
-                .production(100)
-                .address("10 rue de Rivoli, Paris")
-                .build();
+        Factory factory = new Factory("Usine Paris", 100);
+        factory.describeAs("10 rue de Rivoli, Paris");
 
         GeocodingResult geocodingResult = new GeocodingResult(
                 "10 Rue de Rivoli 75004 Paris", 48.8555, 2.3604, 0.95);
 
-        when(geocodingClient.geocode("10 rue de Rivoli, Paris"))
-                .thenReturn(geocodingResult);
+        when(geocodingClient.geocode("10 rue de Rivoli, Paris")).thenReturn(geocodingResult);
         when(repository.save(factory)).thenReturn(factory);
 
         Factory result = factoryService.saveFactory(factory);
@@ -57,16 +53,14 @@ class FactoryServiceTest {
         assertEquals(48.8555, result.getLatitude());
         assertEquals(2.3604, result.getLongitude());
         assertEquals("Usine Paris", result.getName());
+        assertEquals(0, result.getStock(), "une usine nait toujours avec un stock vide");
         verify(geocodingClient).geocode("10 rue de Rivoli, Paris");
         verify(repository).save(factory);
     }
 
     @Test
     void saveFactory_withoutAddress_shouldSkipGeocodeAndSave() {
-        Factory factory = Factory.builder()
-                .name("Usine Anonyme")
-                .production(50)
-                .build();
+        Factory factory = new Factory("Usine Anonyme", 50);
 
         when(repository.save(factory)).thenReturn(factory);
 
@@ -82,11 +76,7 @@ class FactoryServiceTest {
 
     @Test
     void getFactory_existing_shouldReturnFactory() {
-        Factory factory = Factory.builder()
-                .id(1L)
-                .name("Usine Lyon")
-                .production(200)
-                .build();
+        Factory factory = new Factory("Usine Lyon", 200);
 
         when(repository.findById(1L)).thenReturn(Optional.of(factory));
 
@@ -113,8 +103,8 @@ class FactoryServiceTest {
 
     @Test
     void getAllFactory_shouldReturnAllFactories() {
-        Factory paris = Factory.builder().name("Paris").production(10).build();
-        Factory lyon = Factory.builder().name("Lyon").production(20).build();
+        Factory paris = new Factory("Paris", 10);
+        Factory lyon = new Factory("Lyon", 20);
 
         when(repository.findAll()).thenReturn(List.of(paris, lyon));
 
@@ -138,9 +128,7 @@ class FactoryServiceTest {
 
     @Test
     void deleteFactory_existing_shouldDelete() {
-        Factory factory = Factory.builder().id(1L).name("Usine Paris").build();
-
-        when(repository.findById(1L)).thenReturn(Optional.of(factory));
+        when(repository.findById(1L)).thenReturn(Optional.of(new Factory("Usine Paris", 10)));
 
         factoryService.deleteFactory(1L);
 
@@ -157,5 +145,18 @@ class FactoryServiceTest {
         );
 
         verify(repository, never()).deleteById(any());
+    }
+
+    // ──── Tests sur produceFactory ────
+
+    @Test
+    void produceFactory_shouldAddToStock() {
+        Factory factory = new Factory("Paris", 10);
+        when(repository.findById(1L)).thenReturn(Optional.of(factory));
+        when(repository.save(factory)).thenReturn(factory);
+
+        Factory result = factoryService.produceFactory(1L, 40);
+
+        assertEquals(40, result.getStock());
     }
 }
